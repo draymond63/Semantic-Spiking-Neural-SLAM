@@ -19,10 +19,14 @@ setup(
             'Intended Audience :: Science/Research'
             ],
         install_requires=[
-            'numpy',
+            'numpy>=3.1.0',
             'scipy',
             'nengo',
+            'nengo_loihi'
+            'nengo_ocl'
             'nengo_spa',
-            'mypy'
+            'matplotlib',
+            'mypy',
+            'tables',
             ],
 )
