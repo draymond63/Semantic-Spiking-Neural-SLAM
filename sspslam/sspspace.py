@@ -277,8 +277,8 @@ class SSPSpace:
         assert ls_mat.shape == (self.domain_dim, self.domain_dim), f'Expected Len Scale mat with dimensions {(self.domain_dim, self.domain_dim)}, got {ls_mat.shape}'
         scaled_x = x @ ls_mat
         data = np.fft.ifft( np.exp( 1.j * self.phase_matrix @ scaled_x.T), axis=0 ).real
-        return data.T
-    
+        return np.squeeze(data.T)
+
     def encode_and_deriv(self,x):
         '''
         Returns the ssp representation of the data and the derivative of

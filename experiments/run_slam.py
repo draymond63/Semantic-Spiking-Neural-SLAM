@@ -15,7 +15,7 @@ parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFo
 parser.add_argument("--backend", default="cpu", type=str, help="can be [cpu|ocl|loihi-sim|loihi]")
 parser.add_argument("--domain-dim", default=2, type=int,
                     help="Dim of path to generate")
-parser.add_argument("--limit", default=0.08, type=float)
+parser.add_argument("--limit", default=0.1, type=float)
 parser.add_argument("--seed", default=0, type=int)
 parser.add_argument("--T", default=10, type=float, help='The total simulation time in seconds. ')
 parser.add_argument("--n-landmarks", default=10, type=int, help='The number of landmarks in the env. ')
@@ -54,6 +54,8 @@ dt = 0.001
 T= args.T
 radius = 1
 domain_dim = args.domain_dim
+timesteps = np.arange(0, T, dt)
+n_timesteps = len(timesteps)
 path = np.hstack([nengo.processes.WhiteSignal(T, high=args.limit, seed=args.seed+i).run(T,dt=dt) for i in range(domain_dim)])
 shift_fun = lambda x, new_min, new_max: (new_max - new_min)*(x - np.min(x))/(np.max(x) - np.min(x))  + new_min
 for i in range(path.shape[1]):
@@ -135,6 +137,9 @@ elapsed_time = time.time() - start2
 sim_path_est  = ssp_space.decode(sim.data[slam_output_p], 'from-set','grid', 100)
 
 
+import matplotlib as mpl
+mpl.rcParams.update(mpl.rcParamsDefault)
+
 if args.save:
     slam_filename = 'slam_' + backend + '_sspdim_' + str(d) + '_pinneurons_' + str(pi_n_neurons) + '_memnneurons_' + str(mem_n_neurons) + '_ccnneurons_' + str(circonv_n_neurons) + '_T_' + str(int(T)) + '_seed_' + str(args.seed) + '.npz'
     np.savez("data/" + slam_filename, ts = sim.trange(),path=path,real_ssp=real_ssp,
@@ -146,7 +151,6 @@ if args.save:
                   elapsed_time=elapsed_time,elapsed_thread_time=elapsed_thread_time)
         
 
-        
 if args.plot:
     # Plot estimate
     fig = plt.figure(figsize=(5.5, 3.5))
@@ -171,6 +175,7 @@ if args.plot:
     ax11.set_ylabel('y')
     fig.suptitle('SLAM output')
     if args.save_plot:
+        fig.show()
         plt.savefig('figures/slam_' + backend + '.png')
 
 
@@ -187,6 +192,7 @@ if args.plot:
     ax.set_xlim(0,T)
     ax.set_title('Obj location from OVCs')
     if args.save_plot:
+        fig.show()
         plt.savefig('figures/slam_landmark_' + backend + '.png')
 
 
@@ -203,6 +209,7 @@ if args.plot:
     ax.set_xlim(0,T)
     ax.set_title('Obj location from memory recall')
     if args.save_plot:
+        fig.show()
         plt.savefig('figures/slam_mem_' + backend + '.png')
 
 

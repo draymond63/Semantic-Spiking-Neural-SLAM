@@ -187,8 +187,8 @@ class SLAMNetwork(nengo.network.Network):
         super().__init__()
         
         domain_dim = ssp_space.domain_dim
-       	d=ssp_space.ssp_dim
-               
+        d = ssp_space.ssp_dim
+
         rng = np.random.RandomState(seed=seed)
         landmark_sps = lm_space.vectors
         # if landmark_sps is None:
@@ -232,7 +232,7 @@ class SLAMNetwork(nengo.network.Network):
         with self:
             self.velocity_input = nengo.Node(size_in=domain_dim, label='vel_input')
             self.landmark_vec_input = nengo.Node(size_in=domain_dim, label='lm_vec_input')
-            self.landmark_id_input = nengo.Node(lambda t,x: landmark_sps[int(x)] if x>0
+            self.landmark_id_input = nengo.Node(lambda t,x: landmark_sps[int(x)] if len(landmark_sps)>x>0
                                                 else np.zeros(d), size_in=1, label='lm_id_input')
             
             self.landmark_vec_ssp = nengo.Node(lambda t,x: ssp_space.encode(x).flatten(), size_in=domain_dim, label='lm_vecssp_input')
@@ -314,11 +314,11 @@ def get_slam_input_functions(ssp_space, lm_space, velocity_data, vec_to_landmark
             Specifies the SSP representation that is being used
             
         velocity_data : np.ndarray
-            With shape (length of path x dim of space). 
-            velocity_data[i,:] is the velocity of the agent at timestep j
+            With shape (sim duration x dim of space). 
+            velocity_data[j,:] is the velocity of the agent at timestep j
             
         vec_to_landmarks_data : np.ndarray
-            With shape (num of landmarks x length of path x dim of space). 
+            With shape (num of landmarks x sim duration x dim of space). 
             vec_to_landmarks_data[i,j,:] is the vector from the agent to landmark i at timestep j
             
         view_rad : float
