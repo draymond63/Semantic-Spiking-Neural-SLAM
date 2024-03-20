@@ -5,8 +5,6 @@ import matplotlib.pyplot as plt
 import tables
 import sys, os
 import argparse
-sys.path.insert(1, os.path.dirname(os.getcwd()))
-os.chdir("..")
 import sspslam
 from sspslam.networks import get_slam_input_functions
 import sspslam.utils as utils
@@ -26,7 +24,7 @@ parser.add_argument("--circonv_n_neurons", default=50, type=int, help='Number of
 # parser.add_argument("--dotprod_n_neurons", default=50, type=int)
 parser.add_argument("--ssp_dim", default=55, type=int, help='The dim of the SSP and SP vectors. Note that with HexSSPs only certain dims are allowed , 2*(domain_dim+1)*n + 1 for integer n>=1. If you specify a ssp_dim is given that does not satisfy this, then a correct value that is close to the given input will be used' )
 parser.add_argument("--length_scale", default=0.1, type=float, help='The length scale of the SSPs.')
-parser.add_argument("--save", default=False, type=bool, help='Whether to save the simulation data (needed for the make_plots scripts)')
+parser.add_argument("--save", default=True, type=bool, help='Whether to save the simulation data (needed for the make_plots scripts)')
 parser.add_argument("--voja", default=True, type=bool,
                     help="Whether to use Voja.")
 parser.add_argument("--cleanup", default=True, type=bool,
@@ -67,7 +65,8 @@ vels = (1/dt)*( path[(np.minimum(np.floor(timesteps/dt) + 1, pathlen-1)).astype(
 view_rad = 0.2
 n_landmarks = args.n_landmarks
 obj_locs = 0.9*radius*2*(sspslam.utils.Rd_sampling(n_landmarks, domain_dim, seed=args.seed) - 0.5)
-vec_to_landmarks = obj_locs.reshape(n_landmarks, 1, domain_dim) - path.reshape(1, pathlen, domain_dim)
+# NICOLE: SHAPE OF THIS WAS PREVIOUSLY WRONG
+vec_to_landmarks = obj_locs.reshape(1, n_landmarks, domain_dim) - path.reshape(pathlen, 1, domain_dim)
 
 # Create SSP space
 domain_dim = 2 # 2d x space
@@ -83,7 +82,7 @@ landmark_ssps = ssp_space.encode(obj_locs)
 lm_space = sspslam.SPSpace(n_landmarks, d, seed=args.seed)
 
 # Get input functions for nodes
-velocity_func, vel_scaling_factor, is_landmark_in_view, landmark_id_func, landmark_sp_func, landmark_vec_func, landmark_vecssp_func = get_slam_input_functions(ssp_space, lm_space, vels, vec_to_landmarks, view_rad)
+velocity_func, vel_scaling_factor, landmark_id_func, landmark_sp_func, landmark_vec_func, landmark_vecssp_func = get_slam_input_functions(ssp_space, lm_space, vels, vec_to_landmarks, view_rad)
 
 clean_up_method = 'grid' if args.cleanup else None
 
@@ -141,15 +140,18 @@ import matplotlib as mpl
 mpl.rcParams.update(mpl.rcParamsDefault)
 
 if args.save:
-    slam_filename = 'slam_' + backend + '_sspdim_' + str(d) + '_pinneurons_' + str(pi_n_neurons) + '_memnneurons_' + str(mem_n_neurons) + '_ccnneurons_' + str(circonv_n_neurons) + '_T_' + str(int(T)) + '_seed_' + str(args.seed) + '.npz'
-    np.savez("data/" + slam_filename, ts = sim.trange(),path=path,real_ssp=real_ssp,
+    slam_filename = None
+    file_index = 0
+    while slam_filename is None or os.path.exists(slam_filename):
+        slam_filename = f'data/{file_index}-slam_{backend}_sspdim_{d}_pinneurons_{pi_n_neurons}_memnneurons_{mem_n_neurons}_ccnneurons_{circonv_n_neurons}_T_{int(T)}_seed_{args.seed}.npz'
+    np.savez(slam_filename, ts = sim.trange(),path=path,real_ssp=real_ssp,
                   obj_locs=obj_locs,view_rad=view_rad,
                   slam_sim_out = sim.data[slam_output_p], 
                   slam_sims = np.sum(sim.data[slam_output_p]*real_ssp,axis=1)/np.linalg.norm(sim.data[slam_output_p],axis=1),
                   slam_path = sim_path_est,
                   slam_error =np.sqrt(np.sum((path - sim_path_est)**2,axis=1)),
                   elapsed_time=elapsed_time,elapsed_thread_time=elapsed_thread_time)
-        
+
 
 if args.plot:
     # Plot estimate
@@ -174,9 +176,9 @@ if args.plot:
     ax11.set_xlabel('Time (s)')
     ax11.set_ylabel('y')
     fig.suptitle('SLAM output')
+    fig.show()
     if args.save_plot:
-        fig.show()
-        plt.savefig('figures/slam_' + backend + '.png')
+        plt.savefig(f'figures/slam_{backend}.png')
 
 
     fig = plt.figure()
@@ -191,9 +193,9 @@ if args.plot:
     ax.set_ylabel("Similarity to true location", fontsize=8)
     ax.set_xlim(0,T)
     ax.set_title('Obj location from OVCs')
+    fig.show()
     if args.save_plot:
-        fig.show()
-        plt.savefig('figures/slam_landmark_' + backend + '.png')
+        plt.savefig(f'figures/slam_landmark_{backend}.png')
 
 
     fig = plt.figure()
@@ -208,8 +210,6 @@ if args.plot:
     ax.set_ylabel("Similarity to true location", fontsize=8)
     ax.set_xlim(0,T)
     ax.set_title('Obj location from memory recall')
+    fig.show()
     if args.save_plot:
-        fig.show()
-        plt.savefig('figures/slam_mem_' + backend + '.png')
-
-
+        plt.savefig(f'figures/slam_mem_{backend}.png')

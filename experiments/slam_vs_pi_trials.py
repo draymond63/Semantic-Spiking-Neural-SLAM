@@ -18,7 +18,7 @@ class SLAMTrial(pytry.Trial):
     def params(self):
         self.param('ssp_dim', ssp_dim=151)
         self.param('domain_dim', domain_dim=2)
-        self.param('sim time', time=120)
+        self.param('sim_time', sim_time=120)
         self.param('path limit', limit=0.08)
         self.param('mem_n_neurons', mem_n_neurons=800)
         self.param('pi_n_neurons',  pi_n_neurons=400)
@@ -32,7 +32,7 @@ class SLAMTrial(pytry.Trial):
                          domain_bounds=1.1*bounds, length_scale=0.1)
         d = ssp_space.ssp_dim
         
-        T = p.time
+        T = p.sim_time
         dt = 0.001
         timesteps = np.arange(0, T, dt)
         n_timesteps = len(timesteps)
@@ -47,7 +47,7 @@ class SLAMTrial(pytry.Trial):
         vels = (1/dt)*( path[(np.minimum(np.floor(timesteps/dt) + 1, pathlen-1)).astype(int),:] -
                        path[(np.minimum(np.floor(timesteps/dt), pathlen-2)).astype(int),:])
         
-        view_rad = 0.2
+        view_rad = 0.2 # How close the landmarks need to be to be seen
         n_landmarks = 10
         obj_locs = 0.9*radius*2*(sspslam.utils.Rd_sampling(n_landmarks, domain_dim, seed=p.seed) - 0.5)
         vec_to_landmarks = obj_locs.reshape(n_landmarks, 1, domain_dim) - path.reshape(1, pathlen, domain_dim)
@@ -56,7 +56,7 @@ class SLAMTrial(pytry.Trial):
         landmark_ssps = ssp_space.encode(obj_locs)
         lm_space = sspslam.SPSpace(n_landmarks, d, seed=p.seed)
 
-        velocity_func, vel_scaling_factor, is_landmark_in_view, landmark_id_func, landmark_sp_func, landmark_vec_func, landmark_vecssp_func = get_slam_input_functions(ssp_space, lm_space, vels, vec_to_landmarks, view_rad)
+        velocity_func, vel_scaling_factor, landmark_id_func, landmark_sp_func, landmark_vec_func, landmark_vecssp_func = get_slam_input_functions(ssp_space, lm_space, vels, vec_to_landmarks, view_rad)
 
         clean_up_method = 'grid'
         
@@ -124,7 +124,7 @@ if __name__=='__main__':
     parser.add_argument('--ssp-dim', dest='ssp_dim', type=int, default=151)
     parser.add_argument('--domain-dim', dest='domain_dim', type=int, default=2)
     parser.add_argument('--pi-n-neurons', dest='pi_n_neurons', type=int, default=700)
-    parser.add_argument('--trial-time', dest='trial_time', type=float, default=120)
+    parser.add_argument('--sim-time', dest='sim_time', type=float, default=120)
     parser.add_argument('--path-gen-param', dest='limit', type=float, default=0.08)
     parser.add_argument('--num-trials', dest='num_trials', type=int, default=5)
     parser.add_argument('--data-dir', dest='data_dir', type=str,
@@ -141,6 +141,7 @@ if __name__=='__main__':
         os.makedirs(data_path)
     for seed in seeds:
         params = {
+            'sim_time': args.sim_time,
             'pi_n_neurons':args.pi_n_neurons,
             'data_format':'npz',
             'data_dir':data_path,

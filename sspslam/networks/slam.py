@@ -158,7 +158,7 @@ class SLAMNetwork(nengo.network.Network):
        lm_space = SPSpace(n_landmarks, d)
        
        # Convert data arrays to functions for nodes
-       velocity_func, vel_scaling_factor, is_landmark_in_view, landmark_id_func, _, landmark_vec_func, _ = get_slam_input_functions(ssp_space,lm_space, velocity_data, vec_to_landmarks_data, view_rad)
+       velocity_func, vel_scaling_factor, landmark_id_func, _, landmark_vec_func, _ = get_slam_input_functions(ssp_space,lm_space, velocity_data, vec_to_landmarks_data, view_rad)
 
        with nengo.Network():
            # If running agent online instead, these will be output from other networks
@@ -232,7 +232,7 @@ class SLAMNetwork(nengo.network.Network):
         with self:
             self.velocity_input = nengo.Node(size_in=domain_dim, label='vel_input')
             self.landmark_vec_input = nengo.Node(size_in=domain_dim, label='lm_vec_input')
-            self.landmark_id_input = nengo.Node(lambda t,x: landmark_sps[int(x)] if len(landmark_sps)>x>0
+            self.landmark_id_input = nengo.Node(lambda t,x: landmark_sps[int(x)] if x>0
                                                 else np.zeros(d), size_in=1, label='lm_id_input')
             
             self.landmark_vec_ssp = nengo.Node(lambda t,x: ssp_space.encode(x).flatten(), size_in=domain_dim, label='lm_vecssp_input')
@@ -312,7 +312,12 @@ def get_slam_input_functions(ssp_space, lm_space, velocity_data, vec_to_landmark
     ----------
         ssp_space : SSPSpace
             Specifies the SSP representation that is being used
-            
+
+        lm_space : np.ndarray
+            Specifies the SP representation that is being used for encoding landmarks.
+            A (num of landmarks x SSP dim) array. The Semantic Pointer representation 
+            of the landmark identities. If not given, will be generated
+
         velocity_data : np.ndarray
             With shape (sim duration x dim of space). 
             velocity_data[j,:] is the velocity of the agent at timestep j
@@ -324,13 +329,9 @@ def get_slam_input_functions(ssp_space, lm_space, velocity_data, vec_to_landmark
         view_rad : float
             The agent's view radius.
             
-        dt : flaot
+        dt : float
             Timestep of simulation from which vec_to_landmarks was obtained. 
             Default is 0.001 (nengo's default)
-                              
-        landmark_sps : np.ndarray
-            A (num of landmarks x SSP dim) array. The Semantic Pointer representation 
-            of the landmark identities. If not given, will be generated
             
         seed : int
             Default is 0
@@ -376,7 +377,7 @@ def get_slam_input_functions(ssp_space, lm_space, velocity_data, vec_to_landmark
     d = ssp_space.ssp_dim
     
     landmark_sps = lm_space.vectors
-       
+
     real_freqs = (ssp_space.phase_matrix @ velocity_data.T)
     vel_scaling_factor = 1/np.max(np.abs(real_freqs))
     vels_scaled = velocity_data*vel_scaling_factor
@@ -384,6 +385,7 @@ def get_slam_input_functions(ssp_space, lm_space, velocity_data, vec_to_landmark
     
     # At time t, if a landmark(s) is in view return the index of the landmark, else return -1
     # Only used for constructing the later functions
+    # Returns the index of the closest landmark. If all are too far away, returns -1
     def landmark_id_func(t):
         current_vecs = vec_to_landmarks_data[int(np.minimum(np.floor(t/dt), pathlen-2)),:,:]
         dists = np.linalg.norm(current_vecs, axis=1)
@@ -391,7 +393,7 @@ def get_slam_input_functions(ssp_space, lm_space, velocity_data, vec_to_landmark
             return -1
         else:
             return np.argmin(dists)
-        
+
     # At time t, if a landmark is in view return the vector to the landmark (from the input data)
     def landmark_vec_func(t):
         cur_id = landmark_id_func(t)
@@ -399,7 +401,7 @@ def get_slam_input_functions(ssp_space, lm_space, velocity_data, vec_to_landmark
             return np.zeros(domain_dim)
         else:
             return vec_to_landmarks_data[int(np.minimum(np.floor(t/dt), pathlen-2)),cur_id, :]
-        
+
    # At time t, if a landmark is in view return the Semantic Pointer representation of the landmark
     def landmark_sp_func(t):
         cur_id = landmark_id_func(t)
@@ -407,7 +409,7 @@ def get_slam_input_functions(ssp_space, lm_space, velocity_data, vec_to_landmark
             return np.zeros(d)
         else:
             return landmark_sps[cur_id]
-            
+
     # At time t, if a landmark is in view return the SSP representation of the vector to the landmark (from the input data)  
     def landmark_vecssp_func(t):
         cur_id = landmark_id_func(t)
@@ -416,12 +418,4 @@ def get_slam_input_functions(ssp_space, lm_space, velocity_data, vec_to_landmark
         else:
             return ssp_space.encode(vec_to_landmarks_data[int(np.minimum(np.floor(t/dt), pathlen-2)), cur_id, :]).flatten()
 
-    # Is an item in view at time t? if no return 10 else return 0. Used for inhibiting neural populations
-    def is_landmark_in_view(t):
-        cur_id = landmark_id_func(t)
-        if cur_id<0:
-            return 10
-        else:
-            return 0
-        
-    return velocity_func, vel_scaling_factor, is_landmark_in_view, landmark_id_func, landmark_sp_func, landmark_vec_func, landmark_vecssp_func
+    return velocity_func, vel_scaling_factor, landmark_id_func, landmark_sp_func, landmark_vec_func, landmark_vecssp_func
