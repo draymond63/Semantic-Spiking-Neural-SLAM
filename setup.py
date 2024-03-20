@@ -17,16 +17,17 @@ setup(
             'Programming Language :: Python :: 3',
             'Topic :: Scientific/Engineering :: Artificial Intelligence',
             'Intended Audience :: Science/Research'
-            ],
+        ],
         install_requires=[
-            'numpy>=3.1.0',
+            'numpy',
             'scipy',
-            'nengo',
-            'nengo_loihi'
-            'nengo_ocl'
+            'nengo==3.2.0', # 3.2.0 is the last version that supports nengo_loihi
+            'nengo_loihi',
+            'nengo_ocl',
             'nengo_spa',
             'matplotlib',
             'mypy',
+            'pytry',
             'tables',
-            ],
+        ],
 )
